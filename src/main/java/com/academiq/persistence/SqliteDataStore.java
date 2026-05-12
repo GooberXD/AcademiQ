@@ -12,7 +12,7 @@ import java.sql.Statement;
  * GradingPolicy already demonstrates Strategy pattern;
  * a DataStore interface with one implementation would be a code smell.
  */
-public class SqliteDataStore {
+public class SqliteDataStore implements AutoCloseable {
 
     private static final String DB_FILE = "academiq.db";
     private Connection connection;
@@ -27,15 +27,13 @@ public class SqliteDataStore {
 
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute("PRAGMA foreign_keys = ON;");
+                stmt.execute("PRAGMA journal_mode = WAL;");
             }
 
             createTables();
 
-            System.out.println("Connected Successfully");
-
         } catch (SQLException e) {
-            System.out.print("Database connection error: ");
-            e.printStackTrace();
+            throw new RuntimeException("Database connection error: " + e.getMessage(), e);
         }
     }
 
@@ -121,14 +119,13 @@ public class SqliteDataStore {
             """);
         }
         catch(SQLException e){
-            System.out.print("Table Creation Error: ");
-            e.printStackTrace();
+            throw new RuntimeException("Table creation error: " + e.getMessage(), e);
         }
     }
 
     public void save(Student student) {
         if (connection == null) {
-            System.out.println("Save error: no database connection.");
+            System.err.println("Save error: no database connection.");
             return;
         }
 
@@ -144,12 +141,9 @@ public class SqliteDataStore {
             ps.setString(2, student.getName());
 
             ps.executeUpdate();
-
-            System.out.println("Student saved successfully.");
         }
         catch (SQLException e) {
-            System.out.print("Save error: ");
-            e.printStackTrace();
+            System.err.println("Save error: " + e.getMessage());
         }
     }
 
@@ -160,17 +154,27 @@ public class SqliteDataStore {
         return null;
     }
 
+    public boolean isConnected() {
+        try {
+            return connection != null && !connection.isClosed();
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    Connection getConnection() {
+        return connection;
+    }
+
+    @Override
     public void close() {
         try{
             if(connection != null && !connection.isClosed()){
                 connection.close();
-                System.out.println("Database connection closed.");
             }
         }
         catch(SQLException e){
-            System.out.print("Close error: ");
-            e.printStackTrace();
+            System.err.println("Close error: " + e.getMessage());
         }
-        
     }
 }
