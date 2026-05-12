@@ -127,15 +127,19 @@ public class SqliteDataStore {
     }
 
     public void save(Student student) {
+        if (connection == null) {
+            System.out.println("Save error: no database connection.");
+            return;
+        }
+
         String sql = """
-                INSERT INTO students(
-                    student_id,
-                    student_name,
-                )
-                VALUES(?,?)
+                INSERT INTO students(student_id, name)
+                VALUES(?, ?)
+                ON CONFLICT(student_id) DO UPDATE SET
+                    name = excluded.name
                 """;
-        
-        try(PreparedStatement ps = connection.prepareStatement(sql)){
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, student.getId());
             ps.setString(2, student.getName());
 
@@ -143,7 +147,7 @@ public class SqliteDataStore {
 
             System.out.println("Student saved successfully.");
         }
-        catch(SQLException e){
+        catch (SQLException e) {
             System.out.print("Save error: ");
             e.printStackTrace();
         }
@@ -164,7 +168,7 @@ public class SqliteDataStore {
             }
         }
         catch(SQLException e){
-            System.out.print("CLose error: ");
+            System.out.print("Close error: ");
             e.printStackTrace();
         }
         
